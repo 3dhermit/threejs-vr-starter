@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Three.js VR Starter</title>
+  <style>
+    body { margin: 0; overflow: hidden; background: #111; }
+    #vr-button {
+      position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
+      padding: 12px 24px; font-size: 16px; font-family: sans-serif;
+      background: #0078ff; color: #fff; border: none; border-radius: 8px;
+      cursor: pointer; z-index: 10;
+    }
+    #vr-button:hover { background: #005ecc; }
+    #status {
+      position: absolute; top: 10px; left: 10px; color: #fff;
+      font-family: monospace; font-size: 13px; z-index: 10;
+    }
+  </style>
+</head>
+<body>
+  <div id="status">loading...</div>
+  <button id="vr-button">ENTER VR</button>
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://unpkg.com/three@0.170.0/build/three.module.js",
+        "three/addons/": "https://unpkg.com/three@0.170.0/examples/jsm/"
+      }
+    }
+  </script>
+  <script type="module">
+    import * as THREE from 'three';
+    import { VRButton } from 'three/addons/webxr/VRButton.js';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+    // --- renderer ---
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.xr.enabled = true;
+    document.body.appendChild(renderer.domElement);
+
+    // --- scene ---
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x222233);
+    scene.fog = new THREE.Fog(0x222233, 10, 50);
+
+    // --- camera (desktop fallback) ---
+    const camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 100);
+    camera.position.set(0, 1.6, 4);
+
+    // --- lights ---
+    scene.add(new THREE.HemisphereLight(0x88ccff, 0x442200, 1));
+    const sun = new THREE.DirectionalLight(0xffeedd, 1.2);
+    sun.position.set(5, 10, 5);
+    scene.add(sun);
+
+    // --- the cube ---
+    const cube = new THREE.Mesh(
+      new THREE.BoxGeometry(1, 1, 1),
+      new THREE.MeshStandardMaterial({ color: 0x44aaff, metalness: 0.2, roughness: 0.4 })
+    );
+    cube.position.y = 1.2;
+    scene.add(cube);
+
+    // ground plane
+    const ground = new THREE.Mesh(
+      new THREE.PlaneGeometry(20, 20),
+      new THREE.MeshStandardMaterial({ color: 0x333344, roughness: 0.9 })
+   );
+    ground.rotation.x = -Math.PI / 2;
+    scene.add(ground);
+
+    // --- desktop orbit controls (disabled automatically in VR) ---
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.target.set(0, 1.2, 0);
+    controls.update();
+
+    // --- VR button ---
+    document.body.appendChild(VRButton.createButton(renderer));
+
+    // --- resize ---
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+
+    // --- render loop ---
+    const status = document.getElementById('status);
+    renderer.setAnimationLoop((time) => {
+      // spin the cube
+      cube.rotation.x = time * 0.0005;
+      cube.rotation.y = time * 0.001;
+
+      // pulse color
+      const hue = (time * 0.00005) % 1;
+      cube.material.color.setHSL(hue, 0.7, 0.55);
+
+      renderer.render(scene, camera);
+
+      if (renderer.xr.isPresenting) {
+        status.textContent = 'in vr — headset active';
+      } else {
+        status.textContent = 'desktop — click ENTER VR on a headset';
+      }
+    });
+  </script>
+</body>
+</html>
